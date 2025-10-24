@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>HabitatFlow Dashboard - Escala 2</title>
+    <style>
+        /* Estilos básicos para la visualización */
+        body { font-family: sans-serif; margin: 20px; background-color: #f4f4f9; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        .kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 30px; }
+        .kpi-card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        h1 { color: #333; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 HabitatFlow: Gestión de Leads (Escala 2)</h1>
+        <p>Conectado a: <span id="api-status">Cargando...</span></p>
+
+        <h2>Métricas Clave (KPIs)</h2>
+        <div class="kpi-grid" id="kpi-data">
+            <div class="kpi-card">Total Leads: <strong id="total-leads">...</strong></div>
+            <div class="kpi-card">Tasa Handoff (%): <strong id="handoff-rate">...</strong></div>
+            <div class="kpi-card">Leads Calificados: <strong id="qualified-leads">...</strong></div>
+        </div>
+
+        <h2>Tabla de Leads Pendientes</h2>
+        <table border="1" width="100%">
+            <thead>
+                <tr>
+                    <th>WA ID</th>
+                    <th>Mensaje</th>
+                    <th>Intención</th>
+                    <th>Presupuesto</th>
+                    <th>Handoff</th>
+                    <th>Acción</th>
+                </tr>
+            </thead>
+            <tbody id="leads-table-body">
+                <tr><td colspan="6">Cargando datos...</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        const API_ENDPOINT = "https://habitatflow-webhook-nlu-kkx3.vercel.app/api/read_leads";
+
+        async function fetchData() {
+            try {
+                document.getElementById('api-status').textContent = 'Conectando a Sheets...';
+
+                // Llama al endpoint de lectura que creaste en el otro proyecto
+                const response = await fetch(API_ENDPOINT);
+
+                if (!response.ok) {
+                    throw new Error('Error al conectar con el endpoint de lectura. Verifique los logs del webhook.');
+                }
+
+                const data = await response.json();
+
+                if (data.error) {
+                    document.getElementById('api-status').textContent = 'Error de Autenticación de Google Sheets.';
+                    console.error('Error de Backend:', data.error);
+                    return;
+                }
+
+                document.getElementById('api-status').textContent = 'Datos cargados con éxito.';
+
+                renderDashboard(data.leads);
+
+            } catch (error) {
+                console.error('Error de Fetch en el Frontend:', error);
+                document.getElementById('api-status').textContent = 'ERROR: ' + error.message;
+            }
+        }
+
+        function renderDashboard(allLeads) {
+            const leads = allLeads.slice(1); // Saltar la fila de encabezados
+            const tableBody = document.getElementById('leads-table-body');
+            const totalLeads = leads.length;
+            let handoffCount = 0;
+
+            tableBody.innerHTML = '';
+
+            leads.forEach(row => {
+                const [timestamp, waId, message, intention, budget, propertyType, handoffRequired, handoffStatus] = row;
+
+                if (handoffRequired === 'SI' && handoffStatus === 'Pendiente') {
+                    handoffCount++;
+
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${waId}</td>
+                        <td>${message.substring(0, 50)}...</td>
+                        <td>${intention}</td>
+                        <td>${budget}</td>
+                        <td><span style="color: red;">${handoffRequired}</span></td>
+                        <td><button onclick="handleHandoff('${waId}')">Marcar Gestionado</button></td>
+                    `;
+                    tableBody.appendChild(tr);
+                }
+            });
+
+            // Actualizar KPIs
+            document.getElementById('total-leads').textContent = totalLeads;
+            document.getElementById('handoff-rate').textContent = ((handoffCount / totalLeads) * 100).toFixed(1) + '%';
+            document.getElementById('qualified-leads').textContent = totalLeads - handoffCount;
+        }
+
+        // Esta función será completada en la Tarea 4
+        function handleHandoff(waId) {
+            alert('Funcionalidad de "Marcar Gestionado" pendiente de implementar.');
+        }
+
+        fetchData();
+    </script>
+</body>
+</html>
